@@ -1,0 +1,814 @@
+---
+title: "GenPipes ChIP-seq Report"
+subtitle: "Results from GenPipes 6.0.0 pipeline"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    self_contained: true
+params:
+  project_id: NA
+  primary_contact: NA
+  project_start_date: NA
+  readset_name: NA
+  peak_annotations_tab: NA
+---
+
+```{css document style, echo=FALSE}
+/* Make overflowing tables scrollable */
+.scroll-box {
+  overflow-x: auto;
+}
+/* Target table inside scroll-box */
+.scroll-box table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+/* Freeze first column */
+.scroll-box th:first-child,
+.scroll-box td:first-child {
+  position: sticky;
+  background-color: white;
+  left: 0;
+  z-index: 1;
+}
+
+/* Format footer */
+.footer {
+  padding: 10px;
+  text-align: center;
+  background-color: #ebf3f5;
+}
+
+/* Format text block 1 (blue) */
+.text-block-blue {
+  background-color: #d5eef7;
+  padding: 20px;
+  border-radius: 5px;
+}
+/* Format text block 2 (gray) */
+.text-block-gray {
+  background-color: #ebf3f5;
+  padding: 20px;
+  border-radius: 5px;
+}
+  
+/* Center images */
+.center-image {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+/* Format figure captions */
+.figure-caption {
+  padding: 5px;
+  text-align: center;
+  color: gray;
+}
+
+/* IGV floating images */
+.igv-float-image {
+  margin: 10px;
+  border: 1px solid gray;
+  border-radius: 5px;
+}
+/* IGV center images */
+.igv-center-image {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  border: 1px solid gray;
+  border-radius: 5px;
+}
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE
+  )
+
+library(readr)
+library(rmarkdown)
+library(knitr)
+library(ini)
+library(kableExtra)
+options(knitr.table.format = "html") 
+library(stringr)
+library(htmltools)
+library(dplyr)
+library(tibble)
+library(data.table)
+library(purrr)
+library(rsvg)
+library(png)
+```
+
+```{r Finding images}
+c3g_logo <- "./copied2report/report_images/c3g_logo.png"
+
+igv_ref_genome1 <- "./copied2report/report_images/igv_ref_genome1.png"
+igv_ref_genome2 <- "./copied2report/report_images/igv_ref_genome2.png"
+
+igv_ref_genome_annotation1 <- "./copied2report/report_images/igv_ref_genome_annotation1.png"
+igv_ref_genome_annotation2 <- "./copied2report/report_images/igv_ref_genome_annotation2.png"
+
+igv_load_tracks <- "./copied2report/report_images/igv_load_tracks.png"
+
+igv_group_autoscale <- "./copied2report/report_images/igv_group_autoscale.png"
+
+igv_navigate <- "./copied2report/report_images/igv_navigate.png"
+```
+
+``` {r Finding files 1: ini file and readset}
+pipeline_ini_file <- list.files(path="./copied2report", pattern="*.config.trace.ini",  all.files=TRUE, full.names=TRUE)
+
+readset_file <- list.files(path="./copied2report", pattern=paste(params$readset_name), all.files=TRUE, full.names=TRUE)
+```
+
+``` {r Finding files 2: everything else}
+multiqc_html <- list.files(pattern="*.multiqc\\.html$", all.files=TRUE, full.names=TRUE)
+
+multiqc_data <- list.files(pattern="*.multiqc_data$", all.files=TRUE, full.names=TRUE)
+
+qc_metrics_file <- list.files(pattern="^IHEC_.*_metrics_AllSamples\\.tsv$", all.files=TRUE, full.names=TRUE)
+
+fp_plot_list <- list.files(path="./graphs/fingerprint_plots", pattern=".fingerprint.png", all.files=TRUE, full.names=TRUE)
+
+pca_png <- list.files(path="./graphs", pattern="read_coverage_pca.png", all.files=TRUE, full.names=TRUE)
+pca_pdf <- list.files(path="./graphs", pattern="read_coverage_pca.pdf", all.files=TRUE, full.names=TRUE)
+
+homer_html_file <- list.files(pattern="ChipSeq.homer_find_motifs_genome.md", all.files=TRUE, full.names=TRUE)
+
+homer_known_list <- list.files(path="./annotation", pattern="knownResults.txt", all.files=TRUE, full.names=TRUE, recursive=TRUE)
+
+sample1_motif1_logo_png <- "./copied2report/report_images/known1.logo.png" #For when logo png is created
+ 
+tree_file <- list.files(pattern="tree.txt", all.files=TRUE, full.names=TRUE)
+```
+
+```{r C3G logo}
+htmltools::img(src = knitr::image_uri(c3g_logo), 
+               alt = 'C3G logo', 
+               style = 'position:absolute; top:10px; right:250px; padding:20px',
+               height = '125px')
+```
+
+```{r Define footer text}
+footer_text <- "Canadian Centre for Computational Genomics • [Contact & Help Desk](https://computationalgenomics.ca/contact-us/)"
+```
+
+# {.tabset}
+
+## Project & Pipeline Information
+
+```{r Read ini file}
+pipeline_ini <- read.ini(pipeline_ini_file)
+```
+
+### Project Details
+
+<div class="text-block-blue">
+**Project ID**: `r paste(params$project_id)`\
+
+**Primary Contact**: `r paste(params$primary_contact)`\
+
+**Project Manager**: François Lefebvre\
+
+**Date of INI File Creation/Date Started**: `r paste(params$project_start_date)`\
+
+**Assembly Genome Used**: `r paste(pipeline_ini$DEFAULT$assembly)` (`r paste(pipeline_ini$DEFAULT$assembly_synonyms)`)\
+
+**Samples**: \
+
+```{r Read readset file}
+readset <- read.delim(readset_file, header = TRUE, sep = "\t")
+```
+
+```{r Marks and samples table}
+sample_df <- readset[,0:4]
+
+sample_df_ordered <- sample_df[order(sample_df$Sample),] %>%
+  mutate(MarkType = case_when(
+          MarkType=="N" ~ "Narrow",
+          MarkType=="B" ~ "Broad",
+          MarkType=="I" ~ "Input"
+          ))
+
+kable(sample_df_ordered %>%
+  select(Sample, Readset, MarkName, MarkType),
+  col.names = c("Sample", "Readset", "Mark", "Mark Type"),
+  row.names = FALSE) %>%
+  kable_styling(bootstrap_options = "condensed", "responsive") %>%
+  collapse_rows(columns = 1, valign = "middle")  %>% #Groups readsets by sample
+  row_spec(0:nrow(sample_df_ordered), background = "white")
+```
+</div>
+
+---
+
+### Pipeline Details
+
+The table below summarizes the principal steps in GenPipes' ChIP-seq pipeline.
+
+For more details about the GenPipes ChIP-seq pipeline, visit the [Read The Docs](https://genpipes.readthedocs.io/en/genpipes-v-3.6.2/user_guide/pipelines/gp_chipseq.html) or [GitHub](https://github.com/c3g/GenPipes/tree/main/genpipes/pipelines/chipseq).
+
+```{r Pipeline steps 1: Find modules and module versions from ini file}
+# Create list of key-value pairs from ini "DEFAULT" section
+ini_default <- pipeline_ini[["DEFAULT"]]
+
+# Initialize module_df
+module_df <- data.frame(module = character(),
+                        version = character(), 
+                        link = character(),
+                        embedded_link = character())
+
+# Extract module names and versions from ini_default for module_df
+for (i in names(ini_default)) {
+  if (grepl("module", i, ignore.case = TRUE)) {
+    module_name <- sub("mugqic/(.*?)/.*", "\\1", ini_default[i])
+    module_version <- sub("([^/]*/){2}", "", ini_default[i])
+    module_df <- add_row(module_df, module = module_name, version = module_version)
+  }  
+}
+```
+
+
+```{r Pipeline steps 2: Add links to module_df}
+# Links last checked: 2025-07-22
+module_df <- module_df %>%
+  mutate(link = case_when(
+    module == "R_Bioconductor" ~ "https://www.bioconductor.org",
+    module == "bwa" ~ "https://bio-bwa.sourceforge.net",
+    module == "bwa-mem2" ~ "https://github.com/bwa-mem2/bwa-mem2/blob/master/README.md",
+    module == "deepTools" ~ "https://deeptools.readthedocs.io/en/latest/",
+    module == "GenomeAnalysisTK" ~ "https://gatk.broadinstitute.org/hc/en-us",
+    module == "homer" ~ "http://homer.ucsd.edu/homer/motif/",
+    module == "MACS2" ~ "https://github.com/macs3-project/MACS?tab=readme-ov-file",
+    module == "MultiQC" ~ "https://seqera.io/multiqc/",
+    module == "picard" ~ "https://broadinstitute.github.io/picard/",
+    module == "samtools" ~ "https://www.htslib.org",
+    module == "sambamba" ~ "https://lomereiter.github.io/sambamba/",
+    module == "trimmomatic" ~ "http://www.usadellab.org/cms/?page=trimmomatic",
+    module == "bedtools" ~ "https://bedtools.readthedocs.io/en/latest/",
+    module == "star" ~ "https://pmc.ncbi.nlm.nih.gov/articles/PMC3530905/"
+  ))
+
+# Format as embedded links
+module_df$embedded_link <- paste0("<a href='", module_df$link, "' target='_blank'>", module_df$module, "</a>")
+```
+
+
+```{r Pipeline steps 3: Create pipeline_steps list}
+## Define description and modules for each step
+
+# Descriptions for each step
+qc_description = 
+"Quality control checks are performed throughout the pipeline. The modules deepTools and Picard are used to evaluate various QC metrics and generate graphs. MultiQC aggregates all of the QC results into one report."
+
+trimming_description = 
+"Raw sequence reads are trimmed using Trimmomatic for quality and to remove sequencing adapters."
+
+alignment_description = 
+"Reads are aligned to a reference genome using the bwa-mem2 algorithm (from the Burrows-Wheeler Aligner (BWA) software package). Sambamba sorts reads according to their genomic coordinates and filters out duplicates, unmapped reads and low quality reads. Bedtools removes any reads from blacklist regions."
+
+peak_calling_description = 
+"Peaks are called with MACS2 to identify regions with enriched signals from the alignment data."
+
+annotation_description = 
+"The identified peaks are annotated with HOMER using the RefSeq annotations for the reference genome used. HOMER also identifies motifs among the called peaks."
+
+dba_description = 
+"Sites with differential binding between sample groups are identified using the R Bioconductor package DiffBind."
+
+# Extract module information from module_df for each step
+qc_modules <- module_df %>% filter(module_df$module %in% c("deepTools", "MultiQC", "picard"))
+trimming_modules <- module_df %>% filter(module_df$module == c("trimmomatic"))
+alignment_modules <- module_df %>% filter(module_df$module %in% c("bwa", "bwa-mem2", "sambamba", "bedtools"))
+peak_calling_modules <- module_df %>% filter(module_df$module == c("MACS2"))
+annotation_modules <- module_df %>% filter(module_df$module == c("homer"))
+dba_modules <- module_df %>% filter(module_df$module == c("R_Bioconductor"))
+
+# Add the description and list of modules for each step
+qc <- list("Description" = qc_description, "Module Information" = qc_modules)
+trimming <- list("Description" = trimming_description, "Module Information" = trimming_modules)
+alignment <- list("Description" = alignment_description, "Module Information" = alignment_modules)
+peak_calling <- list("Description" = peak_calling_description, "Module Information" = peak_calling_modules)
+annotation <- list("Description" = annotation_description, "Module Information" = annotation_modules)
+dba <- list("Description" = dba_description, "Module Information" = dba_modules)
+
+# Create a list of all steps
+pipeline_steps <- list("Quality Control" = qc,
+                       "Trimming" = trimming,
+                       "Alignment" = alignment,
+                       "Peak Calling" = peak_calling,
+                       "Peak Annotation" = annotation,
+                       "Differential Binding Analysis" = dba)
+```
+
+
+```{r Pipeline steps 4: Flatten pipeline_steps list into df}
+pipeline_df <- imap_dfr(pipeline_steps, function(step_data, step_name) {
+  step_description <- step_data$Description
+  modules <- step_data[["Module Information"]]
+  if (is.null(modules) || nrow(modules) == 0) {
+    tibble(
+      Step = step_name,
+      Description = step_description,
+      Module = NA,
+      Version = NA
+    )
+  } else {
+    modules %>%
+      mutate(
+        Step = step_name,
+        Description = step_description
+      ) %>%
+      select(Step, Description, Module = embedded_link, Version = version)
+  }
+})
+```
+
+```{r Pipeline steps 5: Create table from pipeline_df}
+kable(pipeline_df, "html", escape = FALSE, align = "clcc") %>%
+  kable_styling(bootstrap_options = "basic") %>%
+  column_spec(1, width = "125px") %>%
+  column_spec(1:4, extra_css = "vertical-align: middle;") %>%
+  collapse_rows(columns = c(1,2), valign = "middle")
+```
+
+---
+
+### Citation
+Mathieu Bourgey, Rola Dali, Robert Eveleigh, Kuang Chung Chen, Louis Letourneau, Joel Fillon, Marc Michaud, Maxime Caron, Johanna Sandoval, Francois Lefebvre, Gary Leveque, Eloi Mercier, David Bujold, Pascale Marquis, Patrick Tran Van, David Anderson de Lima Morais, Julien Tremblay, Xiaojian Shao, Edouard Henrion, Emmanuel Gonzalez, Pierre-Olivier Quirion, Bryan Caron, Guillaume Bourque, GenPipes: an open-source framework for distributed and scalable genomic analyses, GigaScience, Volume 8, Issue 6, June 2019, giz037, https://doi.org/10.1093/gigascience/giz037
+\
+\
+**Please cite us and inform us when you do!**
+
+Email: francois.lefebvre@mcgill.ca
+
+Citation guide: [Read the Docs - Citing and Citations](https://genpipes.readthedocs.io/en/genpipes-v6.0.0/resources/citation.html#)
+
+We like to keep track of published work.
+ 
+---
+
+<div class="footer">`r paste(footer_text)`</div> 
+
+## Quality Control
+
+### MultiQC Report
+
+The MultiQC Report compiles quality control metrics for all samples assessed by various tools throughout the pipeline. It includes the following:
+
+- General statistics 
+- Trimmomatic: Surviving reads
+- Samtools: Flagstat 
+- Picard:
+  - Alignment summary
+  - Mean read length
+  - Base distribution
+  - Insert size
+  - Mean base quality by cycle
+  - Base quality distribution
+- deepTools:
+  - Correlation heatmap
+  - Fingerprint plot
+- HOMER:
+  - Per sequence GC content
+  - Tag length distribution
+  - Chromosomal coverage
+- MACS2: Filtered fragments
+
+<div class="alert alert-success">
+The MultiQC report can be found using the following link: **[MultiQC Report](`r paste(multiqc_html)`)**
+
+It can also be found with the path ``r paste(multiqc_html)``
+</div>
+
+---
+
+### QC Metrics
+
+The table below presents several basic quality control metrics from ``r paste(basename(qc_metrics_file))``.
+
+It contains information of about the number of raw reads for each sample and its corresponding input along with the proportion of reads that were trimmed, mapped, duplicate, filtered, mitochondrial and singleton. 
+
+It also includes the number of peaks for each sample, the number of mapped reads found within peaks and the Fraction of Reads in Peaks (FRiP) score. The FRiP score represents the number of reads in a peak over the total number of mapped reads; a greater FRiP score indicates a better signal-to-noise ratio. This is often used as measure of ChIP-seq library quality. 
+
+```{r Read IHEC metrics table}
+qc_metrics <- read_tsv(qc_metrics_file)
+```
+
+<div class="scroll-box">
+```{r Create QC Metrics Table}
+kable(qc_metrics %>%
+  select(Sample_Name,  Mark_Name, ChIP_type, Input_Name, Genome_Assembly, 
+         Raw_Reads, Trimmed_Reads_Fraction,Mapped_Reads_Fraction, Duplicates_Reads_Fraction, Filtered_Reads_Fraction, 
+         Mitochondrial_Reads_Fraction, Singletons_Reads,
+         Input_Raw_Reads, Input_Trimmed_Reads_Fraction, Input_Mapped_Reads_Fraction, Input_Filtered_Reads_Fraction, 
+         Input_Mitochondrial_Reads_Fraction, Input_Singletons_Reads,
+         Nbr_Peaks, Reads_in_Peaks, frip)) %>%
+  kable_styling(bootstrap_options = "hover", font_size = 12) %>%
+  column_spec(1, width = "auto", extra_css = "white-space: nowrap;") %>%
+  scroll_box(width = "100%", height = "100%")
+```
+</div>
+\
+<div class="alert alert-success">
+ The full QC Metrics table can be found using the path ``r paste(qc_metrics_file)``
+</div>
+
+---
+
+### Fingerprint Plots: Assessing ChIP Enrichment Signals
+
+Fingerprint plots are used to assess the enrichment signals of samples and inputs.
+
+Here, plots were generated using deepTools
+[plotFingerprint](https://deeptools.readthedocs.io/en/develop/content/tools/plotFingerprint.html), a tool based on a method developed by
+[Diaz *et al.*, 2014](https://github.com/songlab/chance/wiki/CHANCE-Manual#checking-the-strength-of-enrichment-in-the-ip).
+
+For each sample, plotFingerprint randomly selects genomic regions as bins of a specified length and sums the per-base coverage within each bin. The bins are then ranked according to their coverage and the cumulative sum of the read coverage is plotted.
+
+The rise of the cumulative read coverage curve indicates the specificity of the ChIP enrichment; while a steeper curve indicates more localized enrichment signals, a curve with a more gradual rise indicates more evenly distributed signals.
+
+The type of curve expected depends on the type of mark is used:
+
+- **Narrow peak marks**, such as transcription factors, typically have steeply rising curves that indicate strong enrichment to specific regions.
+- **Broad peak marks**, such as histones, typically have gradually rising curves that indicate more wide-spread enrichment.
+- An ideal **input** would have a curve resembling a diagonal line, indicating a uniform distribution of reads along the genome.\
+
+#### Fingerprint plot example
+```{r Get sample name and mark type for the fp plot example}
+fp_plot1_sample <- sub("\\..*$", "", basename(fp_plot_list[1]))
+fp_plot1_mark <- sub("^[^.]*\\.([^.]+)\\..*$", "\\1", basename(fp_plot_list[1]))
+```
+
+Displayed below is an example of a fingerprint plot generated from your data with sample ``r paste(fp_plot1_sample)`` and mark type ``r paste(fp_plot1_mark)``.
+
+This plot can be found with at ``r paste(fp_plot_list[1])``.
+```{r Display Fingerprint plot example}
+htmltools::img(src = knitr::image_uri(fp_plot_list[1]), 
+               alt = "Fingerprint plot example", 
+               class = "center-image")
+```
+
+#### Where to find fingerprint plots
+<div class="alert alert-success">
+Fingerprint plots for each samples can be found using the path ``r paste(dirname(fp_plot_list[1]))``
+
+A fingerprint plot with all of the samples in one figure can be found in deepTools section of the **[MultiQC Report](`r paste(multiqc_html)`)**
+</div>
+
+---
+
+### Read Coverage PCA Plot: Comparing Samples
+
+The amount of variability in read coverage between samples can be observed graphically with a Principal Component Analysis (PCA) plot.
+
+This can useful for comparing the the variability between replicate samples and samples with different experimental conditions. Assessing the grouping patterns in a read coverage PCA plot can also be helpful for identifying potential particularities in your data, such as batch effects and outliers.
+
+To assess genome-wide similarity between samples, deepTools [multiBamSummary](https://deeptools.readthedocs.io/en/develop/content/tools/multiBamSummary.html#multibamsummary) divides the genome into consecutive bins and calculates the read coverage for each bin for all samples. Then, deepTools [plotPCA](https://deeptools.readthedocs.io/en/develop/content/tools/plotPCA.html) evaluates the read coverage across bins between samples to generate the following two plots:
+
+- A **PCA plot** with the eigenvalues of the top two principal components, representing the amount of variance explained by each principal component.
+- A **Scree plot** with the amount of variance explained by each principal component (eigenvalue, blue bars), along with cumulative variance (red line) as a function of the top principal components.
+
+Note that the read coverage PCA plot should only be used as a means of quality control and should not be used to to identify unknown groupings.
+
+```{r Display PCA plot}
+htmltools::img(src = knitr::image_uri(pca_png), 
+               alt = "Read coverage PCA plot", 
+               class = "center-image")
+```
+
+<div class="alert alert-success">
+A PDF version of this read coverage PCA plot can be found using the path:
+``r paste(pca_pdf)``
+
+A PNG version can be found using the path:
+``r paste(pca_png)``
+</div>
+
+---
+
+<div class="footer">`r paste(footer_text)`</div> 
+
+```{r Include Peak Annotations Tab?, include=FALSE}
+# HOMER peak motif analysis is only performed on narrow peaks
+# If there are only broad peaks, there will be no results for HOMER peak motif analysis
+
+# If ChipSeq.homer_find_motifs_genome.md was found, include peak annotations tab + HOMER results in Output Explanation
+Include_Peaks_Tab <- TRUE
+if (length(homer_html_file) == 0) {
+  Include_Peaks_Tab <- FALSE
+}
+```
+
+```{r Knit ChIP-seq_Peak_Annotations_Tab.Rmd (for narrow peaks only), eval=Include_Peaks_Tab, results='asis'}
+cat(
+  knitr::knit_child(params$peak_annotations_tab, quiet = TRUE)
+  )
+```
+
+## Genome Tracks 
+
+### Visualizing Genome Tracks Using IGV
+
+Integrative Genomics Viewer ([IGV](https://igv.org)) is a tool used for visually exploring genomic data by displaying sequencing data as tracks aligned to a reference genome.
+
+For IGV's Quick Start Guide visit [Quick Start](https://igv.org/doc/desktop/#QuickStart/).
+
+Summarized here are the steps to visualize your annotation data using the **IGV desktop application**.
+
+<div class="text-block-blue">
+#### 1. Launch IGV
+
+If you don’t already have IGV installed on your desktop, visit the [Download IGV](https://igv.org/doc/desktop/#DownloadPage/) page to do so.
+</div>
+\
+<div class="text-block-blue">
+#### 2. Load a reference genome
+
+A reference genome is used to map your data. It is important to select the same reference genome as the assembly genome used during the alignment step (find this in the *Project & Pipeline Information* tab).
+
+Note: Because switching reference genomes clears loaded tracks, the reference genome should be loaded before the tracks.
+
+There are 3 options for loading a reference genome:
+
+  A. Selecting from the hosted genomes list\
+  B. Loading a UCSC track hub\
+  C. Defining a custom reference genome (not described here)\
+  
+```{r IGV reference genome image 1}
+htmltools::img(src = knitr::image_uri(igv_ref_genome1), 
+               alt = "IGV: Reference genome image 1", 
+               width = "300",
+               style = "float:right",
+               class = "igv-float-image")
+```
+**A. Selecting from the hosted genomes list**
+
+- In the menu bar, select ***Genomes***, then ***Download hosted genome...***
+- A pop-up window will appear with a list of genomes hosted by IGV.
+  - Select your reference genome.
+  - If presented the option of downloading or using remote sequences and annotations, choose "Use remote".
+  - Click ***OK***.
+  
+```{r IGV reference genome image 2} 
+htmltools::img(src = knitr::image_uri(igv_ref_genome2), 
+               alt = "IGV: Reference genome image 2",
+               width = "500",
+               class = "igv-center-image")
+```
+\
+
+**Loading hosted annotation tracks (optional)**\
+```{r IGV genome annotation images 1}
+htmltools::img(src = knitr::image_uri(igv_ref_genome_annotation1), 
+               alt = "IGV: Genome annotation image 1", 
+               width = "400",
+               style = "float:right",
+               class = "igv-float-image")
+```
+Certain reference genomes also have related annotation tracks that can be loaded. 
+
+To check what hosted tracks are available for your reference genome, select ***File*** then ***Load From Server*** in the menu bar.
+
+```{r IGV genome annotation images 2}
+htmltools::img(src = knitr::image_uri(igv_ref_genome_annotation2), 
+               alt = "IGV: Genome annotation images 2",
+               width = "850",
+               class = "igv-center-image")
+```
+<div class="figure-caption">
+Pictured here is an example of the hosted tracks available for the human (GRCh38/hg38) reference genome.
+</div>
+
+**B. Loading a UCSC track hub**\
+UCSC hosts an archive of NCBI genome assemblies through [UCSC GenArk](https://hgdownload.soe.ucsc.edu/hubs/), which can be loaded into IGV.
+
+- In the menu bar, select ***Genomes***, then ***Load Genome from UCSC GenArk…***
+- Select the desired genome from the list and click ***Load***.
+- The pop-up window "Select tracks to load" offers various annotation tracks related to the selected genome, including tracks from the following categories:
+  - Mapping and sequencing
+  - Variation and repeats
+  - Genes and genes predictions
+  - Expression and regulation
+  - mRNA and EST
+- After completing your selection of tracks, click ***OK***.
+
+Visit IGV's User Guide: [Loading a reference genome](https://igv.org/doc/desktop/#UserGuide/reference_genome/%23select-a-hosted-genome) for more details.
+
+</div>
+\
+<div class="text-block-blue">
+#### 3. Load your data
+
+Your track data is available in the form of bigWig (`.bw`) files that can be found within the `tracks_bigWigs` folder (expand `tracks_bigWigs.zip`).
+
+- In the IGV menu bar, select ***File***, then select ***Load from File…***
+- Find and select the relevant bigWig files and click ***Open***. It may take several minutes to load due to the size of the files.
+- Once loaded, your tracks will appear in the track area above the reference genome.
+
+```{r IGV load tracks image}
+htmltools::img(src = knitr::image_uri(igv_load_tracks), 
+               alt = "IGV: Load tracks image",
+               width = "400",
+               class = "igv-center-image")
+```
+
+Visit IGV's User Guide: [Loading and removing tracks](https://igv.org/doc/desktop/#UserGuide/loading_data/) for more details.
+</div>
+\
+<div class="text-block-blue">
+#### 4. Format your tracks
+
+```{r IGV group autoscale image}
+htmltools::img(src = knitr::image_uri(igv_group_autoscale), 
+               alt = "IGV: Group autoscale image",
+               width = "400",
+               style = "float:right",
+               class = "igv-float-image")
+```
+**Group autoscale**
+
+Once all of your tracks are loaded, it is important to do a group autoscale of the tracks to make the peaks between them comparable. 
+
+- Select all the tracks by holding the shift key and clicking each of the track titles on the left side of the page. The selected tracks will appear in grey.
+- Right click anywhere in the grey area to open up the track options. Click ***Group Autoscale***.
+
+
+**Other formatting options**
+
+Other track formatting options are available by right clicking on any individual track or selection of multiple tracks. These include editing track labels and appearance (colour, display mode, etc.). 
+
+</div>
+\
+<div class="text-block-blue">
+#### 5. Navigate
+
+Bring specific genomic regions into view by navigating through the genome tracks.
+
+For more details on the various navigation controls, visit IGV's User Guide: [Navigating the view](https://igv.org/doc/desktop/#UserGuide/navigation/).
+
+```{r IGV navigate image}
+htmltools::img(src = knitr::image_uri(igv_navigate), 
+               alt = "IGV: Navigate image",
+               width = "800",
+               class = "igv-center-image")
+```
+</div>
+\
+<div class="text-block-blue">
+#### 6. Save
+
+IGV sessions can be saved by clicking ***File*** > ***Save Session***.
+
+IGV views can be saved as PNG or SVG images by clicking ***File*** > ***Save PNG image*** or ***Save SVG image***.
+
+Visit IGV's User Guide on [Sessions](https://igv.org/doc/desktop/#UserGuide/sessions/) and [Saving Images](https://igv.org/doc/desktop/#UserGuide/saving_images/) for more details.
+
+</div>
+
+---
+
+<div class="footer">`r paste0(footer_text)`</div>
+
+## Output Explanation
+
+### Output Explanation: `GenPipes_ChIP-seq_Results`
+
+The folder `GenPipes_ChIP-seq_Results` contains files from the analysis of your ChIP-seq data using GenPipes. It includes all the files referenced in throughout this report.
+
+This page provides a summary and explanation of the different subfolders and files within `GenPipes_ChIP-seq_Results`.
+
+The `GenPipes_ChIP-seq_Results` folder has the following structure:
+
+```{r Output directory tree}
+tree_lines <- readLines(tree_file)
+tree_lines <- tree_lines[2:(length(tree_lines)-2)]
+
+cat(
+  paste0("Genpipes_ChIP-seq_Results", sep = "\n"), 
+  paste0("├── ChIP-seq_Report.html", sep = "\n"),
+  paste0(tree_lines, sep = "\n")
+  )
+```
+
+### ``./annotation/``
+<div class="text-block-blue">
+The `annotation` folder contains files related to the ascription of biological meaning to your sequencing data. 
+
+This folder contains a subfolder for each sample with the following:
+
+- Peak annotation table `SAMPLE_MARK.annotated.csv`
+- Gene and genome ontology enrichment results (HTML files)
+- Peak annotation results (as `.txt` files) from various tools and databases 
+```{r Output: HOMER Results 1 (for narrow peaks only), eval=Include_Peaks_Tab, results='asis'}
+cat(
+"- HOMER motif enrichment results:
+  - Known motifs results:
+    - `knownResults.html`
+    - `knownResults.txt`
+    - `knownResults` folder, containing:
+      - Sequence logos for each motif (SVG format)
+      - `.motif` files for each motif
+  - *De novo* results:
+    - `homerResults.html`
+    - `homerResults.txt`
+    - `homerResults` folder, containing:
+      - HTML files for each motif
+      - Sequence logos for each motif (forward and reverse, SVG format)
+      - `.motif` files for each motif
+      - HTML files for similar *de novo* motifs"
+)
+```
+
+The `annotation` folder also includes a file called `peak_stats_AllSamples.csv` that compiles the peak statistics for all the samples in one.
+
+```{r Output: HOMER Results 2 (for narrow peaks only), eval=Include_Peaks_Tab, results='asis'}
+cat(
+"For more information on the `.motif` files see [HOMER Motif Discovery Workflow](http://homer.ucsd.edu/homer/motif/motifFinding.html) step 12: Motif Files.
+
+For more information on HOMER's *de novo* motif discovery methods see [HOMER Motif Discovery Workflow](http://homer.ucsd.edu/homer/motif/motifFinding.html) steps 1-9 and 12-13."
+)
+```
+</div>
+
+---
+
+### ``r paste(multiqc_html)``
+<div class="text-block-blue">
+The file ``r paste(multiqc_html)`` leads to the [MultiQC Report](`r paste(multiqc_html)`) discussed in the *Quality Control* tab.
+</div>
+
+---
+
+### ``r paste(qc_metrics_file)``
+<div class="text-block-blue">
+`IHEC_chipseq_metrics_AllSamples.tsv` contains various quality control parameters for each sample. 
+
+A portion of ``r paste(qc_metrics_file)`` is displayed as a table in the *Quality Control* tab.
+</div>
+
+---
+
+### `./graphs/`
+<div class="text-block-blue">
+The `graphs` folder contains the following:
+
+- Miscellaneous graphs for each sample
+  - For samples with narrow peak marks only
+  - Files: `SAMPLE.MARK_Misc_Graphs.png` & `SAMPLE.MARK_Misc_Graphs.ps`
+  - Each file contains:
+    - Location analysis of binding
+    - Distribution of peaks found within exons
+    - Distribution of peaks found within introns
+    - Distribution of peak distances relative to TSS
+- Quality control graphs for each sample and each input
+  - Files for samples: `SAMPLE.MARK_QC_Metrics.png`
+  - Files for inputs: `SAMPLE.INPUT_QC_Metrics.png`
+  - Each file contains:
+    - Tag count
+    - Tag autocorrelation
+    - Sequence bias
+    - GC bias
+- `fingerprint_plots/`
+  - The folder `fingerprint_plots` contains PNG files of the fingerprint plots for each sample, an example of which can be found in the *Quality Control* tab. 
+- `read_coverage_pca.pdf` & `read_coverage_pca.png`
+  - Editable PDF and PNG versions of the read coverage PCA plots shown in the *Quality Control* tab. 
+
+</div>
+
+---
+
+### `./tracks_bigWigs.zip` → `./tracks_bigWigs/`
+<div class="text-block-blue">
+`tracks_bigWigs.zip` contains annotation track files in bigWig format (`.bw`). These can be loaded into a genome browser such as [IGV](https://igv.org) or [USCS Genome Browser](https://genome.ucsc.edu) to visualize your sequencing data. 
+
+Consult the *Genome Browser* tab of this report for a brief guide on visualizing your tracks in IGV.
+</div>
+
+---
+
+### `trimReadsetTable.tsv`
+<div class="text-block-blue">
+`trimReadsetTable.tsv` contains statistics on the trimming process of the raw reads.
+
+This file includes the number of raw reads for each sample as well as the number and percentage of surviving reads after the trimming step.
+</div>
+
+---
+
+### Sharing this report and your results
+
+To share this report and the results of the GenPipes processing of your ChIP-seq data, it is recommended to share `GenPipes_ChIP-seq_Results.tar.gz` as it contains all the files linked and referenced throughout the report.
+
+---
+
+<div class="footer">`r paste0(footer_text)`</div>
