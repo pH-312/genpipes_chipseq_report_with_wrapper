@@ -1,10 +1,11 @@
-# README for 'genpipes_chipseq_report' & 'genpipes_chipseq_report_with_wrapper'
-Last updated: 2025-08-29
+# README for `genpipes_chipseq_report` & `genpipes_chipseq_report_with_wrapper`
+Last updated: 2025-08-29\
+README updated: 2026-03-06
 
 ## About
-Collects files from GenPipes' ChIP-seq pipeline (for both ChIP-seq and ATAC-seq data)
-Renders an HTML report from 'ChIP-seq_Report.Rmd' or 'ATAC-seq_Report.Rmd'
-Outputs a tarball, either 'GenPipes_ChIP-seq_Results.tar.gz' or 'GenPipes_ATAC-seq_Results.tar.gz', containing the following:
+Collects files from GenPipes' ChIP-seq pipeline (for both ChIP-seq and ATAC-seq data).\
+Renders an HTML report from `ChIP-seq_Report.Rmd` or `ATAC-seq_Report.Rmd`.\
+Outputs a tarball, either `GenPipes_ChIP-seq_Results.tar.gz` or `GenPipes_ATAC-seq_Results.tar.gz`, containing the following:
 - annotations directory
 - ChIP-seq_Report.html or ATAC-seq_Report.html
 - graphs directory (with added fingerprint plots, read coverage PCA plots and insert size plots (ATAC-seq only))
@@ -14,9 +15,48 @@ Outputs a tarball, either 'GenPipes_ChIP-seq_Results.tar.gz' or 'GenPipes_ATAC-s
 - tracks_bigWigs.zip
 - trimReadsetTable.tsv
 
+## Set-up
+1. Create directory `ReportingFigures` within projects.
+2. Within `ReportingFigures` create the sub-directory/sub-directories `genpipes_chipseq_report` and/or `genpipes_chipseq_report_with_wrapper`, depending on intended usage. The difference between these is way in which inputs are obtained. See below section for specifics.
+3. Set up the 'ReportingFigures' directory as follows:
+```bash
+ReportingFigures
+  ├── README.md
+  ├── genpipes_chipseq_report
+  │   ├── ATAC-seq_Report.Rmd
+  │   ├── ChIP-seq_Peak_Annotations_Tab.Rmd
+  │   ├── ChIP-seq_Report.Rmd
+  │   ├── generate_report.sh
+  │   └── report_images
+  │       ├── c3g_logo.png
+  │       ├── igv_group_autoscale.png
+  │       ├── igv_load_tracks.png
+  │       ├── igv_navigate.png
+  │       ├── igv_ref_genome1.png
+  │       ├── igv_ref_genome2.png
+  │       ├── igv_ref_genome_annotation1.png
+  │       └── igv_ref_genome_annotation2.png
+  └── genpipes_chipseq_report_with_wrapper
+      ├── ATAC-seq_Report.Rmd
+      ├── ChIP-seq_Peak_Annotations_Tab.Rmd
+      ├── ChIP-seq_Report.Rmd
+      ├── generate_report.sh
+      ├── generate_report_wrapper.sh
+      └── report_images
+          ├── c3g_logo.png
+          ├── igv_group_autoscale.png
+          ├── igv_load_tracks.png
+          ├── igv_navigate.png
+          ├── igv_ref_genome1.png
+          ├── igv_ref_genome2.png
+          ├── igv_ref_genome_annotation1.png
+          └── igv_ref_genome_annotation2.png
+```
+5. In line 163 of `generate_report.sh`, edit the path of `rf_dir` accordingly.
+
 ## To run
-Go to report directory of GenPipes' output
-See below ("Difference between 'genpipes_chipseq_report' & 'genpipes_chipseq_report_with_wrapper'") for how to run each script
+Go to `report` directory of GenPipes' output.\
+See below ("Difference between `genpipes_chipseq_report` & `genpipes_chipseq_report_with_wrapper`") for how to run each script.
 
 ### Requirements
 **For ChIP-seq:** 
@@ -29,50 +69,56 @@ TMP: Until ATAC-seq pipeline is updated with deepTools:
   Must specify "atacseq" as the 3rd argument when submitting the job (defaults to "chipseq" if not specified)
 
 ### Notes
-- Because HOMER motif analysis is done only with narrow peak marks, rendering the 'Peak Annotations' tab (see child Rmd 'ChIP-seq_Peak_Annotations_Tab.Rmd') in 'ChIP-seq_Report.Rmd' depends of the presence of 'ChipSeq.homer_find_motifs_genome.md'
+- Because HOMER motif analysis is done only with narrow peak marks, rendering the 'Peak Annotations' tab (see child Rmd `ChIP-seq_Peak_Annotations_Tab.Rmd`) in `ChIP-seq_Report.Rmd` depends of the presence of `ChipSeq.homer_find_motifs_genome.md`
 - The script will be exited if not run from the right directory, if missing required arguments, if required files are not found, if step fails, etc.
 
-## Difference between 'genpipes_chipseq_report' & 'genpipes_chipseq_report_with_wrapper':
-'genpipes_chipseq_report_with_wrapper' was created to take into account situations in which users would want to specify what ini file, readset file and project start date to use. 'generate_report_wrapper.sh' was created to facilitate passing arguments to 'generate_report.sh'.
+## Difference between `genpipes_chipseq_report` & `genpipes_chipseq_report_with_wrapper`:
+`genpipes_chipseq_report_with_wrapper` was created to take into account situations in which users would want to specify what ini file, readset file and project start date to use. `generate_report_wrapper.sh` was created to facilitate passing arguments to `generate_report.sh`.
 
-'genpipes_chipseq_report' (original version) takes only project ID and primary contact as arguments (tmp: seq type too). Here, the newest ini file is always used. The name of the readset file to use is extracted from this ini file, as is the project start date.
+`genpipes_chipseq_report` (original version) takes only project ID and primary contact as arguments (tmp: seq type too). Here, the newest ini file is always used. The name of the readset file to use is extracted from this ini file, as is the project start date.
 
-**Important note 1:** Despite files in each directory having the same names, the scripts are *different* (.Rmd and .sh files)
+**Important note 1:** Despite files in each directory having the same names, the scripts are *different* (.Rmd and .sh files).\
 The Rmd files will only work with their corresponding .sh scripts
 
-**Important note 2:** 'genpipes_chipseq_report_with_wrapper/generate_report.sh' is based off 'genpipes_chipseq_report/generate_report.sh', but has been tested less extensively than the original script
+**Important note 2:** `genpipes_chipseq_report_with_wrapper/generate_report.sh` is based off `genpipes_chipseq_report`/`generate_report.sh`, but has been tested less extensively than the original script
 
-### 'genpipes_chipseq_report'
-Submitted directly to the SLURM with 2/3 mandatory positional arguments:
-    ARG1: Project ID          (mandatory)
-    ARG2: Primary contact     (mandatory)
+### `genpipes_chipseq_report`
+Submitted directly to the SLURM with 2/3 mandatory positional arguments:\
+    ARG1: Project ID          (mandatory)\
+    ARG2: Primary contact     (mandatory)\
     ARG3: chipseq or atacseq  (optional, defaults to chipseq)
 
 Example:
+```bash
 [user@narval report]$ sbatch path_to/genpipes_chipseq_report/generate_report.sh "Project ID" "Primary Contact" "atacseq"
+```
 
-### 'genpipes_chipseq_report_with_wrapper'
-Submitted directly to the SLURM with 2-6 positional arguments (1) or indirectly using 'generate_report_wrapper.sh' (2)
+### `genpipes_chipseq_report_with_wrapper`
+Submitted directly to the SLURM with 2-6 positional arguments (Option 1) or indirectly using `generate_report_wrapper.sh` (Option 2)
 
-Option 1: Submit directly to the SLURM
-Specify the following position arguments (no skips):
-    ARG1: Project ID            (mandatory)
-    ARG2: Primary contact       (mandatory)
-    ARG3: chipseq or atacseq    (optional, defaults to chipseq)
-    ARG4: Ini file name         (optional, defalut: newest ini file)
-    ARG5: Readset file name     (optional, default: extracted from ini file)
+**Option 1: Submit directly to the SLURM**\
+Specify the following position arguments (no skips):\
+    ARG1: Project ID            (mandatory)\
+    ARG2: Primary contact       (mandatory)\
+    ARG3: chipseq or atacseq    (optional, defaults to chipseq)\
+    ARG4: Ini file name         (optional, defalut: newest ini file)\
+    ARG5: Readset file name     (optional, default: extracted from ini file)\
     ARG6: Project start date    (optional, default: extracted from ini file)
 
 Example:
+```bash
 [user@narval report]$ sbatch path_to/genpipes_chipseq_report_with_wrapper/generate_report.sh "Project ID" "Primary Contact" "chipseq" "ChipSeq.chipseq.2025-08-11T15.44.04.config.trace.ini" "myReadset2.tsv" "2025-08-26"
+```
 
-Option 2: Using the wrapper
-Run 'generate_report_wrapper.sh' from the login node
-Enter inputs as prompted
-Check inputs and press Enter to confirm submission of 'generate_report.sh' to SLURM
+**Option 2: Using the wrapper**\
+Run `generate_report_wrapper.sh` from the login node\
+Enter inputs as prompted\
+Check inputs and press Enter to confirm submission of `generate_report.sh` to SLURM
 
 Example:
+```bash
 [user@narval report]$ bash path_to/genpipes_chipseq_report_with_wrapper/generate_report_wrapper.sh
+```
 
 ## Anticipated changes
 'generate_report.sh' was created considering that the next iteration of GenPipes' ChIP-seq pipeline would have the following updates:
