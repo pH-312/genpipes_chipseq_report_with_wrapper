@@ -214,7 +214,7 @@ if [ -z "$start_date" ]; then
 fi
 
 # - ReportingFigures & R Markdown ----------------------------------------
-rf_dir="/lustre06/project/6007512/C3G/projects/ReportingFigures/genpipes_chipseq_report_with_wrapper"
+rf_dir="/path_to/ReportingFigures/genpipes_chipseq_report_with_wrapper" # TO CHANGE DURING SET-UP
 img_dir="$rf_dir/report_images"
 
 if [[ "$seq_type" == "chipseq" ]]; then
