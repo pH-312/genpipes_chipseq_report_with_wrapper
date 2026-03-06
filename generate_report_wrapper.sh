@@ -170,7 +170,7 @@ echo "--------------------------------------------------------------------------
 read -p $'\n'"Press Enter to submit generate_report_6.1.sh to SLURM..."
 
 ## PROMPT USER FOR INPUTS #######################################################################################################
-sbatch /lustre06/project/6007512/C3G/projects/ReportingFigures/v6_2025-08-19/generate_report_6.1.sh \
+sbatch /path_to/ReportingFigures/generate_report_6.1.sh \ # TO CHANGE DURING SET-UP
     "$project_id" \
     "$primary_contact" \
     "$seq_type" \
